@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import log
+from routers import log, meeting
 
 app = FastAPI(
     title="Dev Life OS API",
@@ -17,7 +17,8 @@ app.add_middleware(
 )
 
 
-app.include_router(log.router, prefix="/api/v1")
+app.include_router(log.router,     prefix="/api/v1")
+app.include_router(meeting.router, prefix="/api/v1")
 
 
 @app.get("/")
