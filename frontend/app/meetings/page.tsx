@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { meetingApi, Meeting } from "@/lib/api";
 import "./meetings.css";
 
 type MeetingType =
@@ -13,18 +14,7 @@ type MeetingType =
   | "1-on-1"
   | "Other";
 
-interface Meeting {
-  id: number;
-  title: string;
-  date: string;
-  duration: string;
-  type: MeetingType;
-  attendees: string;
-  keyPoints: string;
-  actionItems: string;
-}
-
-const tagStyle: Record<MeetingType, string> = {
+const tagStyle: Record<string, string> = {
   "Daily standup":      "tag-purple",
   "Sprint planning":    "tag-purple",
   "Backlog refinement": "tag-purple",
@@ -35,70 +25,61 @@ const tagStyle: Record<MeetingType, string> = {
   "Other":              "tag-default",
 };
 
-const initialMeetings: Meeting[] = [
-  {
-    id: 1,
-    title: "Sprint 1 planning",
-    date: "28 Mar · 60 min",
-    duration: "60 min",
-    type: "Sprint planning",
-    attendees: "All team",
-    keyPoints: "Agreed sprint goal around auth module. 16 story points committed. Definition of Done reviewed. PO confirmed acceptance criteria for top 5 stories.",
-    actionItems: "Nisha to share sprint board by EOD.",
-  },
-  {
-    id: 2,
-    title: "Kickoff with Product Owner",
-    date: "27 Mar · 45 min",
-    duration: "45 min",
-    type: "Stakeholder",
-    attendees: "Centrine, PO",
-    keyPoints: "Q2 roadmap priorities aligned. PO availability confirmed for Wednesday refinements. Backlog grooming process agreed. Sprint 1 scope outlined.",
-    actionItems: "PO to review backlog by Friday.",
-  },
-  {
-    id: 3,
-    title: "Backlog refinement — session 1",
-    date: "1 Apr · 60 min",
-    duration: "60 min",
-    type: "Backlog refinement",
-    attendees: "All team",
-    keyPoints: "Sprint 2 backlog groomed. 8 stories estimated. 3 stories split. Payment flow acceptance criteria updated.",
-    actionItems: "James to spike on payment gateway by Wed.",
-  },
-];
-
 const blankForm = {
-  title: "",
-  date: "",
-  duration: "",
-  type: "Daily standup" as MeetingType,
-  attendees: "",
-  keyPoints: "",
-  actionItems: "",
+  title:        "",
+  date:         "",
+  duration:     "",
+  type:         "Daily standup" as MeetingType,
+  attendees:    "",
+  key_points:   "",
+  action_items: "",
 };
 
 export default function Meetings() {
-  const [meetings, setMeetings] = useState(initialMeetings);
-  const [form, setForm] = useState(blankForm);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [form,     setForm]     = useState(blankForm);
   const [selected, setSelected] = useState<Meeting | null>(null);
 
-  function handleSave() {
+  async function fetchMeetings() {
+    try {
+      const data = await meetingApi.getAll();
+      setMeetings(data);
+    } catch (err) {
+      console.error("Failed to fetch meetings:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchMeetings(); }, []);
+
+  async function handleSave() {
     if (!form.title.trim()) return;
-
-    const newMeeting: Meeting = {
-      id: Date.now(),
-      ...form,
-    };
-
-    setMeetings((prev) => [newMeeting, ...prev]);
-    setForm(blankForm);
+    setSaving(true);
+    try {
+      await meetingApi.create({
+        title:        form.title,
+        date:         form.date,
+        duration:     form.duration   || undefined,
+        type:         form.type,
+        attendees:    form.attendees  || undefined,
+        key_points:   form.key_points,
+        action_items: form.action_items || undefined,
+      });
+      await fetchMeetings();
+      setForm(blankForm);
+    } catch (err) {
+      console.error("Failed to save meeting:", err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <main className="page">
 
-      {/* Page heading */}
       <div className="page-head">
         <div className="page-head-left">
           <div className="eyebrow">All ceremonies & stakeholder meetings</div>
@@ -113,7 +94,11 @@ export default function Meetings() {
 
         {/* Left — meeting list */}
         <div className="col">
-          {meetings.map((m) => (
+          {loading ? (
+            <div className="meeting-card">
+              <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>Loading meetings...</p>
+            </div>
+          ) : meetings.map((m) => (
             <div
               key={m.id}
               className="meeting-card"
@@ -121,23 +106,20 @@ export default function Meetings() {
             >
               <div className="meeting-card-head">
                 <div className="meeting-title">{m.title}</div>
-                <div className="meeting-date">{m.date}</div>
+                <div className="meeting-date">{m.date}{m.duration ? ` · ${m.duration}` : ""}</div>
               </div>
 
               <div className="meeting-tags">
-                <span className={`tag ${tagStyle[m.type]}`}>{m.type}</span>
-                {m.attendees && (
-                  <span className="tag tag-default">{m.attendees}</span>
-                )}
+                <span className={`tag ${tagStyle[m.type] ?? "tag-default"}`}>{m.type}</span>
+                {m.attendees && <span className="tag tag-default">{m.attendees}</span>}
               </div>
 
-              <div className="meeting-summary">{m.keyPoints}</div>
+              <div className="meeting-summary">{m.key_points}</div>
 
-              {/* Expanded view */}
-              {selected?.id === m.id && m.actionItems && (
+              {selected?.id === m.id && m.action_items && (
                 <div className="meeting-footer">
                   <div className="meeting-attendees">
-                    <strong>Action items:</strong> {m.actionItems}
+                    <strong>Action items:</strong> {m.action_items}
                   </div>
                 </div>
               )}
@@ -213,8 +195,8 @@ export default function Meetings() {
               <textarea
                 rows={4}
                 placeholder="What was discussed, decided, agreed?"
-                value={form.keyPoints}
-                onChange={(e) => setForm({ ...form, keyPoints: e.target.value })}
+                value={form.key_points}
+                onChange={(e) => setForm({ ...form, key_points: e.target.value })}
               />
             </div>
 
@@ -223,13 +205,13 @@ export default function Meetings() {
               <textarea
                 rows={3}
                 placeholder="Who does what by when?"
-                value={form.actionItems}
-                onChange={(e) => setForm({ ...form, actionItems: e.target.value })}
+                value={form.action_items}
+                onChange={(e) => setForm({ ...form, action_items: e.target.value })}
               />
             </div>
 
-            <button className="btn btn-solid" onClick={handleSave}>
-              Save minutes
+            <button className="btn btn-solid" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save minutes"}
             </button>
 
           </div>
