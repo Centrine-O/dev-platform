@@ -1,44 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { logApi, LogEntry } from "@/lib/api";
 import "./daily-log.css";
 
 type EntryType = "Dev work" | "Scrum ceremony" | "Meeting" | "Documentation" | "Planning" | "Report" | "Other";
 
-interface LogEntry {
-  id: number;
-  title: string;
-  type: EntryType;
-  tag: string;
-  tagClass: string;
-  color: string;
-  time: string;
-  duration: string;
-}
-
-const tagMap: Record<EntryType, { label: string; tagClass: string; color: string }> = {
-  "Dev work":       { label: "Dev",           tagClass: "tag-blue",   color: "#93c5fd" },
-  "Scrum ceremony": { label: "Ceremony",       tagClass: "tag-purple", color: "#a78bfa" },
-  "Meeting":        { label: "Meeting",        tagClass: "tag-green",  color: "#6ee7b7" },
-  "Documentation":  { label: "Documentation",  tagClass: "tag-amber",  color: "#fcd34d" },
-  "Planning":       { label: "Planning",       tagClass: "tag-purple", color: "#a78bfa" },
-  "Report":         { label: "Report",         tagClass: "tag-amber",  color: "#fcd34d" },
-  "Other":          { label: "Other",          tagClass: "tag-green",  color: "#6ee7b7" },
+const tagMap: Record<string, { label: string; tagClass: string; color: string }> = {
+  "Dev work":       { label: "Dev",          tagClass: "tag-blue",   color: "#93c5fd" },
+  "Scrum ceremony": { label: "Ceremony",      tagClass: "tag-purple", color: "#a78bfa" },
+  "Meeting":        { label: "Meeting",       tagClass: "tag-green",  color: "#6ee7b7" },
+  "Documentation":  { label: "Documentation", tagClass: "tag-amber",  color: "#fcd34d" },
+  "Planning":       { label: "Planning",      tagClass: "tag-purple", color: "#a78bfa" },
+  "Report":         { label: "Report",        tagClass: "tag-amber",  color: "#fcd34d" },
+  "Other":          { label: "Other",         tagClass: "tag-green",  color: "#6ee7b7" },
 };
-
-const todayEntries: LogEntry[] = [
-  { id: 1, title: "Daily standup — all 5 attended, 2 blockers surfaced", type: "Scrum ceremony", tag: "Ceremony",      tagClass: "tag-purple", color: "#a78bfa", time: "09:00", duration: "15 min" },
-  { id: 2, title: "Auth API integration — POST /login connected, token handling implemented", type: "Dev work", tag: "Dev", tagClass: "tag-blue", color: "#93c5fd", time: "10:00", duration: "2h" },
-  { id: 3, title: "Backlog refinement — 8 stories groomed for Sprint 2", type: "Scrum ceremony", tag: "Ceremony", tagClass: "tag-purple", color: "#a78bfa", time: "13:00", duration: "60 min" },
-  { id: 4, title: "Sprint 1 mid-point report drafted", type: "Documentation", tag: "Documentation", tagClass: "tag-amber", color: "#fcd34d", time: "15:00", duration: "" },
-];
-
-const yesterdayEntries: LogEntry[] = [
-  { id: 5, title: "Daily standup", type: "Scrum ceremony", tag: "Ceremony", tagClass: "tag-purple", color: "#a78bfa", time: "09:00", duration: "" },
-  { id: 6, title: "Session management middleware — written, tested, merged to dev branch", type: "Dev work", tag: "Dev", tagClass: "tag-blue", color: "#93c5fd", time: "10:00", duration: "1.5h" },
-  { id: 7, title: "1-on-1s with James & Aisha — team health check", type: "Meeting", tag: "Meeting", tagClass: "tag-green", color: "#6ee7b7", time: "14:00", duration: "30 min" },
-  { id: 8, title: "Meeting minutes drafted and shared with team", type: "Documentation", tag: "Documentation", tagClass: "tag-amber", color: "#fcd34d", time: "15:00", duration: "" },
-];
 
 const timelineBlocks = [
   { slot: "9–9:15",  bg: "var(--purple-l)", border: "var(--purple)" },
@@ -49,44 +25,97 @@ const timelineBlocks = [
 
 const filters = ["All time", "Last 30 days", "This sprint", "By project"];
 
+function isToday(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.toDateString() === now.toDateString();
+}
+
+function isYesterday(dateStr: string) {
+  const d = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return d.toDateString() === yesterday.toDateString();
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function EntryRow({ entry }: { entry: LogEntry }) {
+  const style = tagMap[entry.type] ?? tagMap["Other"];
+  return (
+    <div className="log-entry">
+      <div className="log-dot" style={{ background: style.color }} />
+      <div>
+        <div className="log-title">{entry.title}</div>
+        <div className="log-meta">
+          <span className={`tag ${style.tagClass}`}>{style.label}</span>
+          <span>
+            {formatTime(entry.created_at)}
+            {entry.duration ? ` · ${entry.duration}` : ""}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const blankForm = {
+  activity: "",
+  type: "Dev work" as EntryType,
+  duration: "",
+  tags: "",
+  notes: "",
+};
+
 export default function DailyLog() {
+  const [entries,      setEntries]      = useState<LogEntry[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
   const [activeFilter, setActiveFilter] = useState("All time");
-  const [entries, setEntries] = useState(todayEntries);
+  const [form,         setForm]         = useState(blankForm);
 
-  const [form, setForm] = useState({
-    activity: "",
-    type: "Dev work" as EntryType,
-    duration: "",
-    tags: "",
-    notes: "",
-  });
-
-  function handleSave() {
-    if (!form.activity.trim()) return;
-
-    const { label, tagClass, color } = tagMap[form.type];
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-
-    const newEntry: LogEntry = {
-      id: Date.now(),
-      title: form.activity,
-      type: form.type,
-      tag: label,
-      tagClass,
-      color,
-      time,
-      duration: form.duration,
-    };
-
-    setEntries((prev) => [newEntry, ...prev]);
-    setForm({ activity: "", type: "Dev work", duration: "", tags: "", notes: "" });
+  async function fetchEntries() {
+    try {
+      const data = await logApi.getAll();
+      setEntries(data);
+    } catch (err) {
+      console.error("Failed to fetch log entries:", err);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => { fetchEntries(); }, []);
+
+  async function handleSave() {
+    if (!form.activity.trim()) return;
+    setSaving(true);
+    try {
+      await logApi.create({
+        title:    form.activity,
+        type:     form.type,
+        duration: form.duration || undefined,
+        tags:     form.tags     || undefined,
+        notes:    form.notes    || undefined,
+      });
+      await fetchEntries();
+      setForm(blankForm);
+    } catch (err) {
+      console.error("Failed to save entry:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const todayEntries     = entries.filter((e) => isToday(e.created_at));
+  const yesterdayEntries = entries.filter((e) => isYesterday(e.created_at));
+  const olderEntries     = entries.filter((e) => !isToday(e.created_at) && !isYesterday(e.created_at));
 
   return (
     <main className="page">
 
-      {/* Page heading */}
       <div className="page-head">
         <div className="page-head-left">
           <div className="eyebrow">Evidence trail · audit-ready</div>
@@ -98,7 +127,6 @@ export default function DailyLog() {
         </div>
       </div>
 
-      {/* Audit banner */}
       <div className="audit-banner">
         <div className="audit-banner-left">
           <h3>Audit mode</h3>
@@ -117,52 +145,45 @@ export default function DailyLog() {
         </div>
       </div>
 
-      {/* Main grid */}
       <div className="grid-2">
 
         {/* Left — log entries */}
         <div className="col">
-
-          {/* Today */}
-          <div className="card">
-            <div className="card-label">Today — {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</div>
-            {entries.map((e) => (
-              <div key={e.id} className="log-entry">
-                <div className="log-dot" style={{ background: e.color }} />
-                <div>
-                  <div className="log-title">{e.title}</div>
-                  <div className="log-meta">
-                    <span className={`tag ${e.tagClass}`}>{e.tag}</span>
-                    <span>{e.time}{e.duration ? ` · ${e.duration}` : ""}</span>
-                  </div>
+          {loading ? (
+            <div className="card">
+              <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>Loading entries...</p>
+            </div>
+          ) : (
+            <>
+              <div className="card">
+                <div className="card-label">
+                  Today — {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                 </div>
+                {todayEntries.length === 0
+                  ? <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>Nothing logged yet today.</p>
+                  : todayEntries.map((e) => <EntryRow key={e.id} entry={e} />)
+                }
               </div>
-            ))}
-          </div>
 
-          {/* Yesterday */}
-          <div className="card">
-            <div className="card-label">Yesterday</div>
-            {yesterdayEntries.map((e) => (
-              <div key={e.id} className="log-entry">
-                <div className="log-dot" style={{ background: e.color }} />
-                <div>
-                  <div className="log-title">{e.title}</div>
-                  <div className="log-meta">
-                    <span className={`tag ${e.tagClass}`}>{e.tag}</span>
-                    <span>{e.time}{e.duration ? ` · ${e.duration}` : ""}</span>
-                  </div>
+              {yesterdayEntries.length > 0 && (
+                <div className="card">
+                  <div className="card-label">Yesterday</div>
+                  {yesterdayEntries.map((e) => <EntryRow key={e.id} entry={e} />)}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
 
+              {olderEntries.length > 0 && (
+                <div className="card">
+                  <div className="card-label">Earlier</div>
+                  {olderEntries.map((e) => <EntryRow key={e.id} entry={e} />)}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Right — form + timeline */}
         <div className="col">
-
-          {/* Log form */}
           <div className="card">
             <div className="card-label">Log today&apos;s work</div>
             <div className="form-group">
@@ -221,24 +242,20 @@ export default function DailyLog() {
                 />
               </div>
 
-              <button className="btn btn-solid" onClick={handleSave}>
-                Save to log
+              <button className="btn btn-solid" onClick={handleSave} disabled={saving}>
+                {saving ? "Saving..." : "Save to log"}
               </button>
 
             </div>
           </div>
 
-          {/* Timeline visual */}
           <div className="card">
             <div className="card-label">Timeline view — today</div>
             <div className="timeline-bars">
               {timelineBlocks.map((b) => (
                 <div key={b.slot} className="timeline-bar-row">
                   <div className="timeline-bar-time">{b.slot}</div>
-                  <div
-                    className="timeline-bar"
-                    style={{ background: b.bg, borderLeftColor: b.border }}
-                  />
+                  <div className="timeline-bar" style={{ background: b.bg, borderLeftColor: b.border }} />
                 </div>
               ))}
             </div>
@@ -257,8 +274,8 @@ export default function DailyLog() {
               </div>
             </div>
           </div>
-
         </div>
+
       </div>
     </main>
   );
