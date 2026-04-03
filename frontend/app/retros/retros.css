@@ -1,0 +1,191 @@
+/* ── RETROS PAGE ── */
+
+.page {
+  padding: var(--gap-l);
+  max-width: 1400px;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.page-head-left .eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 6px;
+}
+
+.page-head-left h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.page-head-left h1 em {
+  font-style: italic;
+  color: var(--ink3);
+}
+
+.page-head-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Three column grid */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap-m);
+}
+
+/* Column */
+.retro-col-head {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 8px 8px 0 0;
+}
+
+.retro-col-head--green  { background: var(--green-l);  color: var(--green); }
+.retro-col-head--amber  { background: var(--amber-l);  color: var(--amber); }
+.retro-col-head--purple { background: var(--purple-l); color: var(--purple-d); }
+
+.retro-col-body {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Retro card */
+.retro-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--ink);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  group: true;
+}
+
+.retro-card-text {
+  flex: 1;
+}
+
+.retro-card-delete {
+  background: none;
+  border: none;
+  color: var(--ink4);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.retro-card:hover .retro-card-delete {
+  opacity: 1;
+}
+
+.retro-card-delete:hover {
+  color: var(--red);
+}
+
+/* Add card input */
+.add-card {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.add-card input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px dashed var(--line2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: var(--text-base);
+  color: var(--ink);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.add-card input:focus {
+  border-color: var(--ink3);
+  border-style: solid;
+}
+
+.add-card input::placeholder {
+  color: var(--ink4);
+}
+
+.add-card-btn {
+  width: 30px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink3);
+  font-size: 18px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.add-card-btn:hover {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* Buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: var(--radius-s);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink2);
+}
+
+.btn-ghost:hover { background: var(--bg); }
+
+.btn-solid {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-solid:hover { background: #333; border-color: #333; }
