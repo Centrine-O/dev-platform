@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header/Header";
+import Nav from "@/components/Nav/Nav";
 
 export const metadata: Metadata = {
   title: "Dev Life OS",
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Header />
+        <Nav />
         {children}
       </body>
     </html>

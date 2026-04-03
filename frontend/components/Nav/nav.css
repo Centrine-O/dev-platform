@@ -1,0 +1,55 @@
+/* ── NAV TAB BAR ── */
+.nav-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0 var(--gap-l);
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: var(--header-h);
+  z-index: 99;
+}
+
+.nav-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink3);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.nav-tab svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.nav-tab:hover {
+  color: var(--ink);
+}
+
+.nav-tab:hover svg {
+  opacity: 0.8;
+}
+
+.nav-tab--active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.nav-tab--active svg {
+  opacity: 1;
+}
