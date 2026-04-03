@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import log, meeting, sprint
+from routers import log, meeting, sprint, blocker
 
 app = FastAPI(
     title="Dev Life OS API",
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(log.router,     prefix="/api/v1")
 app.include_router(meeting.router, prefix="/api/v1")
 app.include_router(sprint.router,  prefix="/api/v1")
+app.include_router(blocker.router, prefix="/api/v1")
 
 
 @app.get("/")
