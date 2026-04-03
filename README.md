@@ -267,18 +267,20 @@ PostgreSQL with SQLAlchemy ORM. Core tables planned:
 
 | Section | Frontend | Backend |
 |---------|----------|---------|
-| Project scaffold | Done | Pending |
-| Overview page | In progress | Pending |
-| Daily log | Pending | Pending |
-| Sprint board | Pending | Pending |
-| Meetings | Pending | Pending |
-| Retros | Pending | Pending |
-| Blockers | Pending | Pending |
-| Vision & goals | Pending | Pending |
-| Growth tracker | Pending | Pending |
-| Portfolio | Pending | Pending |
-| Reports / upload | Pending | Pending |
-| Archive | Pending | Pending |
+| Project scaffold | Done | Done |
+| Overview page | Done | — |
+| Daily log | Done | Done |
+| Sprint board | Done | Done |
+| Meetings | Done | Done |
+| Retros | Done | — |
+| Blockers | Done | Done |
+| Vision & goals | Done | Done |
+| Growth tracker | Done | — |
+| Portfolio | Done | — |
+| Reports / upload | Done | Done |
+| Archive | Done | — |
+| Connect frontend to API | In progress | — |
+| Database (PostgreSQL) | Pending | Pending |
 | Auth / login | Pending | Pending |
 
 ---
