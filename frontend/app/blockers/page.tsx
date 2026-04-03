@@ -1,105 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { blockerApi, Blocker } from "@/lib/api";
 import "./blockers.css";
 
 type Severity = "High" | "Med" | "Low";
-type BlockerStatus = "active" | "resolved";
 
-interface Blocker {
-  id: number;
-  title: string;
-  meta: string;
-  severity: Severity;
-  status: BlockerStatus;
-}
-
-const barClass: Record<Severity, string> = {
+const barClass: Record<string, string> = {
   High: "blocker-bar--high",
   Med:  "blocker-bar--med",
   Low:  "blocker-bar--low",
 };
 
-const badgeClass: Record<Severity, string> = {
+const badgeClass: Record<string, string> = {
   High: "badge--high",
   Med:  "badge--med",
   Low:  "badge--low",
 };
 
-const initialBlockers: Blocker[] = [
-  {
-    id: 1,
-    title: "QA environment not provisioned — blocking entire testing pipeline",
-    meta: "Owner: DevOps · Raised: 30 Mar · Due: today",
-    severity: "High",
-    status: "active",
-  },
-  {
-    id: 2,
-    title: "PO unavailable for story clarification on payment flow",
-    meta: "Owner: Centrine · Raised: 31 Mar · Scheduled: tomorrow",
-    severity: "Med",
-    status: "active",
-  },
-  {
-    id: 3,
-    title: "DB access credentials missing for two devs",
-    meta: "Resolved: 29 Mar · took 2 days",
-    severity: "Low",
-    status: "resolved",
-  },
-  {
-    id: 4,
-    title: "Design files not finalised before sprint start",
-    meta: "Resolved: 28 Mar · took 1 day",
-    severity: "Low",
-    status: "resolved",
-  },
-];
-
 const blankForm = {
-  title: "",
+  title:    "",
   severity: "High" as Severity,
-  owner: "",
-  impact: "",
+  owner:    "",
+  impact:   "",
 };
 
+function formatMeta(b: Blocker): string {
+  const raised   = new Date(b.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const resolved = b.resolved_at
+    ? new Date(b.resolved_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    : null;
+  const parts = [
+    b.owner ? `Owner: ${b.owner}` : null,
+    `Raised: ${raised}`,
+    resolved ? `Resolved: ${resolved}` : null,
+    b.resolved_note ?? null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
 export default function Blockers() {
-  const [blockers, setBlockers] = useState(initialBlockers);
-  const [form, setForm] = useState(blankForm);
+  const [blockers, setBlockers] = useState<Blocker[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [form,     setForm]     = useState(blankForm);
+
+  async function fetchBlockers() {
+    try {
+      const data = await blockerApi.getAll();
+      setBlockers(data);
+    } catch (err) {
+      console.error("Failed to fetch blockers:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchBlockers(); }, []);
+
+  async function resolve(id: number) {
+    // Optimistic update
+    setBlockers((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "resolved" as const } : b))
+    );
+    try {
+      await blockerApi.resolve(id, "Marked resolved");
+      await fetchBlockers();
+    } catch (err) {
+      console.error("Failed to resolve blocker:", err);
+      await fetchBlockers();
+    }
+  }
+
+  async function handleSave() {
+    if (!form.title.trim()) return;
+    setSaving(true);
+    try {
+      await blockerApi.create({
+        title:    form.title,
+        severity: form.severity,
+        owner:    form.owner  || undefined,
+        impact:   form.impact || undefined,
+      });
+      await fetchBlockers();
+      setForm(blankForm);
+    } catch (err) {
+      console.error("Failed to log blocker:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const active   = blockers.filter((b) => b.status === "active");
   const resolved = blockers.filter((b) => b.status === "resolved");
 
-  function resolve(id: number) {
-    setBlockers((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? { ...b, status: "resolved", meta: `${b.meta.split("·")[0].trim()} · Resolved: today` }
-          : b
-      )
-    );
-  }
-
-  function handleSave() {
-    if (!form.title.trim()) return;
-
-    const newBlocker: Blocker = {
-      id: Date.now(),
-      title: form.title,
-      meta: `Owner: ${form.owner || "—"} · Raised: today${form.impact ? ` · Impact: ${form.impact}` : ""}`,
-      severity: form.severity,
-      status: "active",
-    };
-
-    setBlockers((prev) => [newBlocker, ...prev]);
-    setForm(blankForm);
-  }
-
   return (
     <main className="page">
 
-      {/* Page heading */}
       <div className="page-head">
         <div className="page-head-left">
           <div className="eyebrow">Sprint 1</div>
@@ -114,40 +111,58 @@ export default function Blockers() {
 
         {/* Left — blocker list */}
         <div>
-          <div className="section-label">Active — {active.length} open</div>
+          {loading ? (
+            <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>Loading blockers...</p>
+          ) : (
+            <>
+              <div className="section-label">Active — {active.length} open</div>
 
-          {active.map((b) => (
-            <div key={b.id} className="blocker">
-              <div className={`blocker-bar ${barClass[b.severity]}`} />
-              <div className="blocker-body">
-                <div className="blocker-title">{b.title}</div>
-                <div className="blocker-meta">{b.meta}</div>
-              </div>
-              <div className="blocker-right">
-                <span className={`badge ${badgeClass[b.severity]}`}>{b.severity}</span>
-                <button className="resolve-btn" onClick={() => resolve(b.id)}>
-                  Mark resolved
-                </button>
-              </div>
-            </div>
-          ))}
+              {active.length === 0 && (
+                <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)", marginBottom: 16 }}>
+                  No active blockers.
+                </p>
+              )}
 
-          <div className="divider" />
+              {active.map((b) => (
+                <div key={b.id} className="blocker">
+                  <div className={`blocker-bar ${barClass[b.severity]}`} />
+                  <div className="blocker-body">
+                    <div className="blocker-title">{b.title}</div>
+                    <div className="blocker-meta">{formatMeta(b)}</div>
+                  </div>
+                  <div className="blocker-right">
+                    <span className={`badge ${badgeClass[b.severity]}`}>{b.severity}</span>
+                    <button className="resolve-btn" onClick={() => resolve(b.id)}>
+                      Mark resolved
+                    </button>
+                  </div>
+                </div>
+              ))}
 
-          <div className="section-label">Resolved this sprint</div>
+              <div className="divider" />
 
-          {resolved.map((b) => (
-            <div key={b.id} className="blocker blocker--resolved">
-              <div className="blocker-bar blocker-bar--done" />
-              <div className="blocker-body">
-                <div className="blocker-title">{b.title}</div>
-                <div className="blocker-meta">{b.meta}</div>
-              </div>
-              <div className="blocker-right">
-                <span className="badge badge--done">Done</span>
-              </div>
-            </div>
-          ))}
+              <div className="section-label">Resolved this sprint</div>
+
+              {resolved.length === 0 && (
+                <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>
+                  None resolved yet.
+                </p>
+              )}
+
+              {resolved.map((b) => (
+                <div key={b.id} className="blocker blocker--resolved">
+                  <div className="blocker-bar blocker-bar--done" />
+                  <div className="blocker-body">
+                    <div className="blocker-title">{b.title}</div>
+                    <div className="blocker-meta">{formatMeta(b)}</div>
+                  </div>
+                  <div className="blocker-right">
+                    <span className="badge badge--done">Done</span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
         {/* Right — form */}
@@ -198,8 +213,8 @@ export default function Blockers() {
               />
             </div>
 
-            <button className="btn btn-solid" onClick={handleSave}>
-              Log blocker
+            <button className="btn btn-solid" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Log blocker"}
             </button>
 
           </div>
