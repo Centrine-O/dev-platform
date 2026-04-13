@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import log, meeting, sprint, blocker, goal, file, retro, growth, portfolio
+from core.database import engine, Base
+import models.all_models  # noqa: F401 — registers all ORM models
+
+# Create all tables (idempotent — safe to run on every startup)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Dev Life OS API",

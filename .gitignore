@@ -1,0 +1,17 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+
+# Uploads (real files — not committed)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+
+# OS
+.DS_Store
