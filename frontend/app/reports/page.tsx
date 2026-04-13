@@ -1,19 +1,12 @@
 "use client";
 
-import { useState, useRef, DragEvent, ChangeEvent } from "react";
+import { useState, useEffect, useRef, DragEvent, ChangeEvent } from "react";
+import { fileApi, FileEntry } from "@/lib/api";
 import "./reports.css";
 
 type Category = "All" | "Report" | "Documentation" | "Meeting minutes" | "Specification" | "Other";
 
-interface FileEntry {
-  id: number;
-  name: string;
-  ext: string;
-  category: Category;
-  project: string;
-  size: string;
-  date: string;
-}
+const categories: Category[] = ["All", "Report", "Documentation", "Meeting minutes", "Specification", "Other"];
 
 function getExt(name: string): string {
   return name.split(".").pop()?.toLowerCase() ?? "txt";
@@ -36,51 +29,61 @@ function iconLabel(ext: string): string {
   return ext.toUpperCase().slice(0, 3);
 }
 
-const initialFiles: FileEntry[] = [
-  { id: 1, name: "Sprint-1-midpoint-report.pdf",     ext: "pdf",  category: "Report",           project: "Dev platform", size: "420 KB", date: "1 Apr 2025" },
-  { id: 2, name: "Auth-module-technical-spec.docx",  ext: "docx", category: "Specification",    project: "Dev platform", size: "185 KB", date: "28 Mar 2025" },
-  { id: 3, name: "Sprint-1-planning-minutes.docx",   ext: "docx", category: "Meeting minutes",  project: "Dev platform", size: "92 KB",  date: "28 Mar 2025" },
-  { id: 4, name: "Q2-roadmap-summary.xlsx",          ext: "xlsx", category: "Report",           project: "Strategy",     size: "310 KB", date: "27 Mar 2025" },
-  { id: 5, name: "Onboarding-scrum-guide.pdf",       ext: "pdf",  category: "Documentation",    project: "Dev platform", size: "640 KB", date: "26 Mar 2025" },
-];
-
-const categories: Category[] = ["All", "Report", "Documentation", "Meeting minutes", "Specification", "Other"];
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
 
 const blankForm = {
-  category: "Report" as Category,
-  project: "",
-  notes: "",
+  category: "Report" as Exclude<Category, "All">,
+  project:  "",
+  notes:    "",
 };
 
 export default function Reports() {
-  const [files, setFiles]             = useState(initialFiles);
-  const [activeCategory, setActiveCategory] = useState<Category>("All");
-  const [dragging, setDragging]       = useState(false);
-  const [form, setForm]               = useState(blankForm);
-  const inputRef                      = useRef<HTMLInputElement>(null);
+  const [files,           setFiles]           = useState<FileEntry[]>([]);
+  const [loading,         setLoading]         = useState(true);
+  const [uploading,       setUploading]       = useState(false);
+  const [activeCategory,  setActiveCategory]  = useState<Category>("All");
+  const [dragging,        setDragging]        = useState(false);
+  const [form,            setForm]            = useState(blankForm);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function fetchFiles() {
+    try {
+      const data = await fileApi.getAll();
+      setFiles(data);
+    } catch (err) {
+      console.error("Failed to load files:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchFiles(); }, []);
 
   const visible = activeCategory === "All"
     ? files
     : files.filter((f) => f.category === activeCategory);
 
-  function processFiles(fileList: FileList) {
-    const today = new Date().toLocaleDateString("en-GB", {
-      day: "numeric", month: "short", year: "numeric",
-    });
-
-    const newEntries: FileEntry[] = Array.from(fileList).map((file) => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      ext: getExt(file.name),
-      category: form.category,
-      project: form.project || "—",
-      size: file.size > 1_000_000
-        ? `${(file.size / 1_000_000).toFixed(1)} MB`
-        : `${Math.round(file.size / 1000)} KB`,
-      date: today,
-    }));
-
-    setFiles((prev) => [...newEntries, ...prev]);
+  async function processFiles(fileList: FileList) {
+    setUploading(true);
+    try {
+      for (const file of Array.from(fileList)) {
+        const fd = new FormData();
+        fd.append("file",     file);
+        fd.append("category", form.category);
+        if (form.project) fd.append("project", form.project);
+        if (form.notes)   fd.append("notes",   form.notes);
+        await fileApi.upload(fd);
+      }
+      await fetchFiles();
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function onFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -96,7 +99,6 @@ export default function Reports() {
   return (
     <main className="page">
 
-      {/* Page heading */}
       <div className="page-head">
         <div className="page-head-left">
           <div className="eyebrow">Documents · evidence · deliverables</div>
@@ -122,8 +124,10 @@ export default function Reports() {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
           >
-            <div className="upload-icon">↑</div>
-            <div className="upload-title">Drop files here or click to upload</div>
+            <div className="upload-icon">{uploading ? "…" : "↑"}</div>
+            <div className="upload-title">
+              {uploading ? "Uploading…" : "Drop files here or click to upload"}
+            </div>
             <div className="upload-sub">PDF, DOCX, XLSX, PPTX, CSV — any project material</div>
             <input
               ref={inputRef}
@@ -141,7 +145,6 @@ export default function Reports() {
               <span className="card-count">{visible.length} file{visible.length !== 1 ? "s" : ""}</span>
             </div>
 
-            {/* Category filters */}
             <div className="filters">
               {categories.map((c) => (
                 <button
@@ -154,7 +157,11 @@ export default function Reports() {
               ))}
             </div>
 
-            {visible.length === 0 ? (
+            {loading ? (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--ink4)", padding: "8px 0" }}>
+                Loading files...
+              </p>
+            ) : visible.length === 0 ? (
               <p style={{ fontSize: "var(--text-sm)", color: "var(--ink4)", padding: "8px 0" }}>
                 No files in this category yet.
               </p>
@@ -163,10 +170,12 @@ export default function Reports() {
                 <div key={f.id} className="file-row">
                   <div className={`file-icon ${iconClass(f.ext)}`}>{iconLabel(f.ext)}</div>
                   <div className="file-info">
-                    <div className="file-name">{f.name}</div>
-                    <div className="file-meta">{f.category} · {f.project} · {f.date}</div>
+                    <div className="file-name">{f.filename}</div>
+                    <div className="file-meta">
+                      {f.category} · {f.project ?? "—"} · {formatDate(f.uploaded_at)}
+                    </div>
                   </div>
-                  <div className="file-size">{f.size}</div>
+                  <div className="file-size">{f.size_label}</div>
                 </div>
               ))
             )}
@@ -187,7 +196,7 @@ export default function Reports() {
               <label>Category</label>
               <select
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
+                onChange={(e) => setForm({ ...form, category: e.target.value as Exclude<Category, "All"> })}
               >
                 <option>Report</option>
                 <option>Documentation</option>

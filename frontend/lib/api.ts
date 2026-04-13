@@ -163,6 +163,98 @@ export const retroApi = {
   remove: (id: number) => request<void>(`/retros/${id}`, { method: "DELETE" }),
 };
 
+// ── Growth ───────────────────────────────────────────────────────────────────
+
+export type Skill = {
+  id:   number;
+  name: string;
+  pct:  number;
+};
+
+export type Cert = {
+  id:       number;
+  label:    string;
+  done:     boolean;
+  due_date?: string;
+};
+
+export type GrowthFeedback = {
+  id:         number;
+  text:       string;
+  author:     string;
+  created_at: string;
+};
+
+export type Reflection = {
+  id:         number;
+  text:       string;
+  created_at: string;
+};
+
+export const growthApi = {
+  getSkills:        ()                              => request<Skill[]>("/growth/skills"),
+  updateSkill:      (id: number, pct: number)       =>
+    request<Skill>(`/growth/skills/${id}`, { method: "PATCH", body: JSON.stringify({ pct }) }),
+  getCerts:         ()                              => request<Cert[]>("/growth/certs"),
+  toggleCert:       (id: number)                   =>
+    request<Cert>(`/growth/certs/${id}/toggle`, { method: "PATCH" }),
+  getFeedback:      ()                              => request<GrowthFeedback[]>("/growth/feedback"),
+  addFeedback:      (text: string, author: string) =>
+    request<GrowthFeedback>("/growth/feedback", { method: "POST", body: JSON.stringify({ text, author }) }),
+  removeFeedback:   (id: number)                   => request<void>(`/growth/feedback/${id}`, { method: "DELETE" }),
+  getReflections:   ()                              => request<Reflection[]>("/growth/reflections"),
+  addReflection:    (text: string)                 =>
+    request<Reflection>("/growth/reflections", { method: "POST", body: JSON.stringify({ text }) }),
+};
+
+// ── Portfolio ─────────────────────────────────────────────────────────────────
+
+export type XpBar = {
+  id:    number;
+  label: string;
+  level: string;
+  pct:   number;
+};
+
+export type TagItem = {
+  label: string;
+  cls:   string;
+};
+
+export type Project = {
+  id:           number;
+  title:        string;
+  role:         string;
+  desc:         string;
+  tags:         TagItem[];
+  banner_color: string;
+  period:       string;
+  impact:       string;
+  created_at:   string;
+};
+
+export type PortfolioAchievement = {
+  id:         number;
+  title:      string;
+  desc:       string;
+  bar_color:  string;
+  created_at: string;
+};
+
+export const portfolioApi = {
+  getXp:              ()                                      => request<XpBar[]>("/portfolio/xp"),
+  updateXp:           (id: number, pct: number, level?: string) =>
+    request<XpBar>(`/portfolio/xp/${id}`, { method: "PATCH", body: JSON.stringify({ pct, level }) }),
+  getProjects:        ()                                      => request<Project[]>("/portfolio/projects"),
+  createProject:      (body: Omit<Project, "id" | "created_at">) =>
+    request<Project>("/portfolio/projects", { method: "POST", body: JSON.stringify(body) }),
+  removeProject:      (id: number)                           => request<void>(`/portfolio/projects/${id}`, { method: "DELETE" }),
+  getAchievements:    ()                                      => request<PortfolioAchievement[]>("/portfolio/achievements"),
+  createAchievement:  (body: Omit<PortfolioAchievement, "id" | "created_at">) =>
+    request<PortfolioAchievement>("/portfolio/achievements", { method: "POST", body: JSON.stringify(body) }),
+  removeAchievement:  (id: number)                           => request<void>(`/portfolio/achievements/${id}`, { method: "DELETE" }),
+};
+
 // ── Files ────────────────────────────────────────────────────────────────────
 
 export type FileEntry = {
