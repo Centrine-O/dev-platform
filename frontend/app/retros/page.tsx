@@ -1,88 +1,62 @@
 "use client";
 
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
+import { retroApi, RetroCard } from "@/lib/api";
 import "./retros.css";
 
 type ColKey = "went-well" | "improve" | "actions";
 
-interface RetroCard {
-  id: number;
-  text: string;
-}
-
-interface RetroColumn {
-  key: ColKey;
-  label: string;
-  headClass: string;
-  cards: RetroCard[];
-}
-
-const initialColumns: RetroColumn[] = [
-  {
-    key: "went-well",
-    label: "Went well",
-    headClass: "retro-col-head--green",
-    cards: [
-      { id: 1, text: "Team adapted quickly to daily standups — no resistance at all." },
-      { id: 2, text: "Clear sprint goal from day one, no scope confusion mid-sprint." },
-      { id: 3, text: "Strong collaboration between front and back-end dev." },
-      { id: 4, text: "Blockers surfaced faster in week 2 than week 1." },
-    ],
-  },
-  {
-    key: "improve",
-    label: "Needs improvement",
-    headClass: "retro-col-head--amber",
-    cards: [
-      { id: 5, text: "Blockers not raised until they were already causing delays." },
-      { id: 6, text: "Backlog not fully refined before sprint start." },
-      { id: 7, text: "Estimation variance too high — needs calibration." },
-      { id: 8, text: "Mid-sprint PO communication was patchy." },
-    ],
-  },
-  {
-    key: "actions",
-    label: "Actions next sprint",
-    headClass: "retro-col-head--purple",
-    cards: [
-      { id: 9,  text: "Blockers flagged in standup — not after the meeting ends." },
-      { id: 10, text: "Refinement session midway through sprint — locked in calendar." },
-      { id: 11, text: "Planning poker for all stories above 3 points." },
-      { id: 12, text: "Weekly async update to PO via shared doc." },
-    ],
-  },
+const columns: { key: ColKey; label: string; headClass: string }[] = [
+  { key: "went-well", label: "Went well",          headClass: "retro-col-head--green"  },
+  { key: "improve",   label: "Needs improvement",  headClass: "retro-col-head--amber"  },
+  { key: "actions",   label: "Actions next sprint", headClass: "retro-col-head--purple" },
 ];
 
+const SPRINT = "Sprint 1";
+
 export default function Retros() {
-  const [columns, setColumns] = useState(initialColumns);
-  const [drafts, setDrafts] = useState<Record<ColKey, string>>({
+  const [cards,   setCards]   = useState<RetroCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts,  setDrafts]  = useState<Record<ColKey, string>>({
     "went-well": "",
-    "improve": "",
-    "actions": "",
+    "improve":   "",
+    "actions":   "",
   });
 
-  function addCard(colKey: ColKey) {
-    const text = drafts[colKey].trim();
-    if (!text) return;
-
-    setColumns((prev) =>
-      prev.map((col) =>
-        col.key === colKey
-          ? { ...col, cards: [...col.cards, { id: Date.now(), text }] }
-          : col
-      )
-    );
-    setDrafts((prev) => ({ ...prev, [colKey]: "" }));
+  async function fetchCards() {
+    try {
+      const data = await retroApi.getAll(SPRINT);
+      setCards(data);
+    } catch (err) {
+      console.error("Failed to fetch retro cards:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function deleteCard(colKey: ColKey, cardId: number) {
-    setColumns((prev) =>
-      prev.map((col) =>
-        col.key === colKey
-          ? { ...col, cards: col.cards.filter((c) => c.id !== cardId) }
-          : col
-      )
-    );
+  useEffect(() => { fetchCards(); }, []);
+
+  async function addCard(colKey: ColKey) {
+    const text = drafts[colKey].trim();
+    if (!text) return;
+    setDrafts((prev) => ({ ...prev, [colKey]: "" }));
+    try {
+      await retroApi.create({ text, column: colKey, sprint: SPRINT });
+      await fetchCards();
+    } catch (err) {
+      console.error("Failed to add card:", err);
+    }
+  }
+
+  async function deleteCard(id: number) {
+    // Optimistic removal
+    setCards((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await retroApi.remove(id);
+    } catch (err) {
+      console.error("Failed to delete card:", err);
+      await fetchCards();
+    }
   }
 
   function handleKey(e: KeyboardEvent<HTMLInputElement>, colKey: ColKey) {
@@ -92,7 +66,6 @@ export default function Retros() {
   return (
     <main className="page">
 
-      {/* Page heading */}
       <div className="page-head">
         <div className="page-head-left">
           <div className="eyebrow">Sprint 1 · end of sprint</div>
@@ -104,57 +77,59 @@ export default function Retros() {
         </div>
       </div>
 
-      {/* Three columns */}
-      <div className="grid-3">
-        {columns.map((col) => (
-          <div key={col.key}>
+      {loading ? (
+        <p style={{ color: "var(--ink4)", fontSize: "var(--text-sm)" }}>Loading board...</p>
+      ) : (
+        <div className="grid-3">
+          {columns.map((col) => {
+            const colCards = cards.filter((c) => c.column === col.key);
+            return (
+              <div key={col.key}>
 
-            {/* Column header */}
-            <div className={`retro-col-head ${col.headClass}`}>
-              {col.label}
-            </div>
-
-            {/* Column body */}
-            <div className="retro-col-body">
-
-              {/* Cards */}
-              {col.cards.map((card) => (
-                <div key={card.id} className="retro-card">
-                  <span className="retro-card-text">{card.text}</span>
-                  <button
-                    className="retro-card-delete"
-                    onClick={() => deleteCard(col.key, card.id)}
-                    aria-label="Remove card"
-                  >
-                    ×
-                  </button>
+                <div className={`retro-col-head ${col.headClass}`}>
+                  {col.label}
                 </div>
-              ))}
 
-              {/* Add card */}
-              <div className="add-card">
-                <input
-                  type="text"
-                  placeholder="Add a card..."
-                  value={drafts[col.key]}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [col.key]: e.target.value }))
-                  }
-                  onKeyDown={(e) => handleKey(e, col.key)}
-                />
-                <button
-                  className="add-card-btn"
-                  onClick={() => addCard(col.key)}
-                  aria-label="Add card"
-                >
-                  +
-                </button>
+                <div className="retro-col-body">
+
+                  {colCards.map((card) => (
+                    <div key={card.id} className="retro-card">
+                      <span className="retro-card-text">{card.text}</span>
+                      <button
+                        className="retro-card-delete"
+                        onClick={() => deleteCard(card.id)}
+                        aria-label="Remove card"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="add-card">
+                    <input
+                      type="text"
+                      placeholder="Add a card..."
+                      value={drafts[col.key]}
+                      onChange={(e) =>
+                        setDrafts((prev) => ({ ...prev, [col.key]: e.target.value }))
+                      }
+                      onKeyDown={(e) => handleKey(e, col.key)}
+                    />
+                    <button
+                      className="add-card-btn"
+                      onClick={() => addCard(col.key)}
+                      aria-label="Add card"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                </div>
               </div>
-
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
     </main>
   );

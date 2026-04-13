@@ -143,6 +143,26 @@ export const goalApi = {
     request<Achievement>("/goals/achievements", { method: "POST", body: JSON.stringify({ title }) }),
 };
 
+// ── Retros ───────────────────────────────────────────────────────────────────
+
+export type RetroCard = {
+  id:         number;
+  text:       string;
+  column:     "went-well" | "improve" | "actions";
+  sprint?:    string;
+  created_at: string;
+};
+
+export const retroApi = {
+  getAll: (sprint?: string) => {
+    const qs = sprint ? `?sprint=${encodeURIComponent(sprint)}` : "";
+    return request<RetroCard[]>(`/retros/${qs}`);
+  },
+  create: (body: Pick<RetroCard, "text" | "column"> & { sprint?: string }) =>
+    request<RetroCard>("/retros/", { method: "POST", body: JSON.stringify(body) }),
+  remove: (id: number) => request<void>(`/retros/${id}`, { method: "DELETE" }),
+};
+
 // ── Files ────────────────────────────────────────────────────────────────────
 
 export type FileEntry = {
