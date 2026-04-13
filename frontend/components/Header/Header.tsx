@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logout } from "@/lib/auth";
 import "./header.css";
 
 export default function Header() {
@@ -8,9 +9,8 @@ export default function Header() {
 
   useEffect(() => {
     const update = () => {
-      const now = new Date();
       setDate(
-        now.toLocaleDateString("en-GB", {
+        new Date().toLocaleDateString("en-GB", {
           weekday: "short",
           day: "numeric",
           month: "short",
@@ -50,6 +50,15 @@ export default function Header() {
         <button className="btn btn-solid">+ New entry</button>
 
         <div className="avatar" aria-label="Profile">C</div>
+
+        <button
+          className="btn btn-ghost"
+          onClick={logout}
+          aria-label="Sign out"
+          style={{ color: "var(--ink4)" }}
+        >
+          Sign out
+        </button>
       </div>
     </header>
   );

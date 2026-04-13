@@ -3,10 +3,30 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 // ── Core fetch wrapper ──────────────────────────────────────────────────────
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Read token from cookie at call time (works in browser only)
+  let token = "";
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]*)/);
+    token = match ? decodeURIComponent(match[1]) : "";
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers ?? {}),
+    },
   });
+
+  if (res.status === 401) {
+    // Token expired or invalid — send to login
+    if (typeof window !== "undefined") {
+      document.cookie = "auth_token=; path=/; max-age=0";
+      window.location.href = "/login";
+    }
+    throw new Error("Unauthorised");
+  }
 
   if (!res.ok) {
     const detail = await res.text();
@@ -18,6 +38,23 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   return res.json();
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export type TokenResponse = {
+  access_token: string;
+  token_type:   string;
+  username:     string;
+};
+
+export const authApi = {
+  login: (username: string, password: string) =>
+    request<TokenResponse>("/auth/login", {
+      method: "POST",
+      body:   JSON.stringify({ username, password }),
+    }),
+  me: () => request<{ username: string }>("/auth/me"),
+};
 
 // ── Daily Log ───────────────────────────────────────────────────────────────
 
