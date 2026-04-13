@@ -1,8 +1,10 @@
-/* ── HEADER ── */
+/* ── HEADER ───────────────────────────────────────────────────────────────── */
 .header {
   height: var(--header-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  background: rgba(13, 13, 16, 0.80);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
   padding: 0 var(--gap-l);
   display: flex;
   align-items: center;
@@ -22,18 +24,19 @@
 .brand-icon {
   width: 30px;
   height: 30px;
-  background: var(--ink);
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-d) 100%);
   border-radius: 8px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(139, 127, 255, 0.35);
 }
 
 .brand-name {
-  font-size: 15px;
+  font-size: var(--text-md);
   font-weight: 600;
   letter-spacing: -0.4px;
-  color: var(--ink);
+  color: var(--ink1);
 }
 
 .brand-role {
@@ -46,34 +49,35 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: var(--gap-s);
+  gap: 8px;
 }
 
 .date-chip {
   font-size: var(--text-xs);
   padding: 4px 10px;
   border-radius: 20px;
-  background: var(--bg);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
   color: var(--ink3);
 }
 
-/* Icon button (notification bell) */
+/* Icon button */
 .icon-btn {
   position: relative;
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: transparent;
+  border: 1px solid var(--border2);
+  background: rgba(255, 255, 255, 0.04);
   display: grid;
   place-items: center;
   color: var(--ink3);
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .icon-btn:hover {
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink1);
 }
 
 .notif-dot {
@@ -82,9 +86,9 @@
   right: 6px;
   width: 5px;
   height: 5px;
-  background: #e54d2e;
+  background: #f87171;
   border-radius: 50%;
-  border: 1.5px solid var(--surface);
+  border: 1.5px solid var(--bg);
 }
 
 /* Buttons */
@@ -96,28 +100,29 @@
   border-radius: var(--radius-s);
   font-size: var(--text-sm);
   font-weight: 500;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .btn-ghost {
-  border: 1px solid var(--line);
-  background: transparent;
+  border: 1px solid var(--border2);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--ink2);
 }
 
 .btn-ghost:hover {
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink1);
 }
 
 .btn-solid {
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: #ffffff;
+  border: 1px solid var(--purple);
+  background: var(--purple);
+  color: #fff;
 }
 
 .btn-solid:hover {
-  background: #333333;
-  border-color: #333333;
+  background: var(--purple-d);
+  border-color: var(--purple-d);
 }
 
 /* Avatar */
@@ -125,8 +130,8 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--purple-l);
-  color: var(--purple-d);
+  background: linear-gradient(135deg, var(--purple), var(--purple-d));
+  color: #fff;
   display: grid;
   place-items: center;
   font-size: var(--text-xs);
